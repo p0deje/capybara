@@ -214,6 +214,7 @@ module Capybara
     def format
       @format || @definition.default_format
     end
+    alias_method :current_format, :format
 
     def enable_aria_label
       @config[:enable_aria_label]
@@ -239,7 +240,7 @@ module Capybara
       errors << error_msg
     end
 
-    def expression_for(name, locator, config: @config, format: format, **options)
+    def expression_for(name, locator, config: @config, format: current_format, **options)
       Selector.new(name, config: config, format: format).call(locator, **options)
     end
 

@@ -164,7 +164,7 @@ RSpec.describe Capybara do
 
     describe 'xpath' do
       it 'uses filter names passed in' do
-        selector = Capybara.add_selector :test do
+        Capybara.add_selector :test do
           xpath(:something, :other) { |_locator| XPath.descendant }
         end
         selector = Capybara::Selector.new :test, config: nil, format: nil
