@@ -40,7 +40,7 @@ private
 
   def delete_all_cookies
     execute_cdp('Network.clearBrowserCookies')
-  rescue *CDPUnsupportedErrors
+  rescue *CDPUnsupportedErrors()
     # If the CDP clear isn't supported do original limited clear
     super
   end
