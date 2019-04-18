@@ -358,8 +358,14 @@ private
           alert.text.match?(regexp) ? alert : nil
         end
       end
-    rescue Selenium::WebDriver::Error::TimeoutError
+    rescue *find_modal_errors
       raise Capybara::ModalNotFound, "Unable to find modal dialog#{" with #{text}" if text}"
+    end
+  end
+
+  def find_modal_errors
+    ::Selenium::WebDriver.logger.suppress_deprecations do
+      [Selenium::WebDriver::Error::TimeoutError, Selenium::WebDriver::Error::TimeOutError]
     end
   end
 
