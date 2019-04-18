@@ -17,6 +17,7 @@ class Capybara::Selenium::Driver < Capybara::Driver::Base
   class << self
     def load_selenium
       require 'selenium-webdriver'
+      require 'capybara/selenium/logger_suppressor'
       warn "Warning: You're using an unsupported version of selenium-webdriver, please upgrade." if Gem.loaded_specs['selenium-webdriver'].version < Gem::Version.new('3.5.0')
     rescue LoadError => e
       raise e unless e.message.match?(/selenium-webdriver/)
@@ -124,7 +125,7 @@ class Capybara::Selenium::Driver < Capybara::Driver::Base
       navigated = true
       # Ensure the page is empty and trigger an UnhandledAlertError for any modals that appear during unload
       wait_for_empty_page(timer)
-    rescue Selenium::WebDriver::Error::UnhandledAlertError, Selenium::WebDriver::Error::UnexpectedAlertOpenError
+    rescue *unhandled_alert_errors
       # This error is thrown if an unhandled alert is on the page
       # Firefox appears to automatically dismiss this alert, chrome does not
       # We'll try to accept it
@@ -235,19 +236,21 @@ class Capybara::Selenium::Driver < Capybara::Driver::Base
   end
 
   def invalid_element_errors
-    [
-      ::Selenium::WebDriver::Error::StaleElementReferenceError,
-      ::Selenium::WebDriver::Error::UnhandledError,
-      ::Selenium::WebDriver::Error::ElementNotVisibleError,
-      ::Selenium::WebDriver::Error::InvalidSelectorError, # Work around a chromedriver go_back/go_forward race condition
-      ::Selenium::WebDriver::Error::ElementNotInteractableError,
-      ::Selenium::WebDriver::Error::ElementClickInterceptedError,
-      ::Selenium::WebDriver::Error::InvalidElementStateError,
-      ::Selenium::WebDriver::Error::ElementNotSelectableError,
-      ::Selenium::WebDriver::Error::ElementNotSelectableError,
-      ::Selenium::WebDriver::Error::NoSuchElementError, # IE
-      ::Selenium::WebDriver::Error::InvalidArgumentError # IE
-    ]
+    ::Selenium::WebDriver.logger.suppress_deprecations do
+      [
+        ::Selenium::WebDriver::Error::StaleElementReferenceError,
+        ::Selenium::WebDriver::Error::UnhandledError,
+        ::Selenium::WebDriver::Error::ElementNotVisibleError,
+        ::Selenium::WebDriver::Error::InvalidSelectorError, # Work around a chromedriver go_back/go_forward race condition
+        ::Selenium::WebDriver::Error::ElementNotInteractableError,
+        ::Selenium::WebDriver::Error::ElementClickInterceptedError,
+        ::Selenium::WebDriver::Error::InvalidElementStateError,
+        ::Selenium::WebDriver::Error::ElementNotSelectableError,
+        ::Selenium::WebDriver::Error::ElementNotSelectableError,
+        ::Selenium::WebDriver::Error::NoSuchElementError, # IE
+        ::Selenium::WebDriver::Error::InvalidArgumentError # IE
+      ]
+    end
   end
 
   def no_such_window_error
@@ -263,10 +266,22 @@ private
   def clear_browser_state
     delete_all_cookies
     clear_storage
-  rescue Selenium::WebDriver::Error::UnhandledError # rubocop:disable Lint/HandleExceptions
+  rescue *clear_browser_state_errors # rubocop:disable Lint/HandleExceptions
     # delete_all_cookies fails when we've previously gone
     # to about:blank, so we rescue this error and do nothing
     # instead.
+  end
+
+  def clear_browser_state_errors
+    ::Selenium::WebDriver.logger.suppress_deprecations do
+      [Selenium::WebDriver::Error::UnhandledError, Selenium::WebDriver::Error::UnknownError]
+    end
+  end
+
+  def unhandled_alert_errors
+    ::Selenium::WebDriver.logger.suppress_deprecations do
+      [Selenium::WebDriver::Error::UnhandledAlertError, Selenium::WebDriver::Error::UnexpectedAlertOpenError]
+    end
   end
 
   def delete_all_cookies
@@ -336,12 +351,14 @@ private
       ignore: modal_error
     )
     begin
-      wait.until do
-        alert = @browser.switch_to.alert
-        regexp = text.is_a?(Regexp) ? text : Regexp.escape(text.to_s)
-        alert.text.match?(regexp) ? alert : nil
+      ::Selenium::WebDriver.suppress_deprecations do
+        wait.until do
+          alert = @browser.switch_to.alert
+          regexp = text.is_a?(Regexp) ? text : Regexp.escape(text.to_s)
+          alert.text.match?(regexp) ? alert : nil
+        end
       end
-    rescue Selenium::WebDriver::Error::TimeOutError
+    rescue Selenium::WebDriver::Error::TimeoutError
       raise Capybara::ModalNotFound, "Unable to find modal dialog#{" with #{text}" if text}"
     end
   end

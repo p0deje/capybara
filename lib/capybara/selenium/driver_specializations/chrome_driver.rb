@@ -40,9 +40,15 @@ private
 
   def delete_all_cookies
     execute_cdp('Network.clearBrowserCookies')
-  rescue Selenium::WebDriver::Error::UnhandledError, Selenium::WebDriver::Error::WebDriverError
+  rescue *CDPUnsupportedErrors
     # If the CDP clear isn't supported do original limited clear
     super
+  end
+
+  def CDPUnsupportedErrors
+    ::Selenium::WebDriver.logger.suppress_deprecations do
+      [Selenium::WebDriver::Error::UnhandledError, Selenium::WebDriver::Error::WebDriverError]
+    end
   end
 
   def execute_cdp(cmd, params = {})
