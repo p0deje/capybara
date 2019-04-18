@@ -10,4 +10,3 @@ gem 'xpath', github: 'teamcapybara/xpath'
 group :doc do
   gem 'redcarpet', platforms: :mri
 end
-
