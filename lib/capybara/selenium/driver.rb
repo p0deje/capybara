@@ -351,7 +351,7 @@ private
       ignore: modal_error
     )
     begin
-      ::Selenium::WebDriver.suppress_deprecations do
+      ::Selenium::WebDriver.logger.suppress_deprecations do
         wait.until do
           alert = @browser.switch_to.alert
           regexp = text.is_a?(Regexp) ? text : Regexp.escape(text.to_s)
